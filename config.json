@@ -1,0 +1,13 @@
+{
+  "url_prefix": "https://tupa.zerobywai.com/manhua/", // 共同網址前綴；url_suffix[*].url 不是完整網址時，會與這裡組合
+  "url_suffix": [
+    { "name": "", "url": "", "special_episode": [], "probable_episode": [] },
+  ], // 固定填陣列；每筆 name 是作品資料夾名稱；special_episode 可省略/null/空陣列；probable_episode 可省略，會與通用 probable_episode 合併
+  "start_episode": 1, // 每個作品的起始集數
+  "max_episode": null, // 每個作品的最大集數；可填整數、空字串或 null，空字串/null 代表自動偵測；不要寫成 "10"
+  "probable_episode": [], // 通用可能集數跳點；只有 max_episode 是空字串/null 時有效；可在 url_suffix 每筆再加專屬 probable_episode
+  "start_number": 0, // 每集圖片起始編號，可填 0；例如 0 會從 000.jpg、0.jpg、00.jpg 開始嘗試
+  "zero_padding": 3, // 最大補零位數；URL 先試 001，再試 1、01；本地檔名統一存成 001
+  "extension": ["jpg", "png"], // 圖片副檔名，可填字串或陣列；陣列會依序嘗試，例如 jpg 404 才試 png
+  "image_workers": 2 // 同一集內最多同時處理幾個圖片編號；只作用於同一集，不會同時下載多部作品或多個集數
+}

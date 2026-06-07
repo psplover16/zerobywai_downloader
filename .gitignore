@@ -1,0 +1,6 @@
+download/*
+!download/.gitkeep
+*.part
+__pycache__/
+*.pyc
+download/*

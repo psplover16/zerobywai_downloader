@@ -1,0 +1,19 @@
+{
+  "consecutive_404_limit": 5, // 每集連續遇到幾個 404 後停止 (抓取每集 最大圖片數量)
+  "consecutive_missing_episode_limit": 2, // 自動偵測最大集數時，連續幾個空集後停止
+  
+  "delay_seconds": 0.1, // 固定請求等待秒數；只有真的發出 HTTP 請求才會套用，若 request_jitter 有值則以 request_jitter 為主
+  "output_dir": "./download", // 下載根目錄；陣列模式會放到 output_dir/作品名稱/集數
+  "request_jitter": [0.1, 0.3], // 隨機請求等待秒數區間；空陣列代表關閉 jitter 並改用 delay_seconds
+  "adaptive_extension_order": true, // 是否依照同一集內成功的副檔名，自動優先嘗試 jpg/png 順序以減少無效 404 探測
+  "adaptive_backoff": true, // 遇到 403/429/5xx/timeout/connection reset/SSL 暫時錯誤時，是否自動降速後繼續流程
+  "timeout_seconds": 20, // 單次下載等待秒數，超過就視為失敗並重試
+  "retries": 3, // 每個檔案最多重試次數
+  "stop_on_error": false, // 非 404 錯誤是否採保守模式；false 代表記錄到 error.md 後繼續整體流程
+  "consecutive_error_limit": 10, // 每集連續幾個非 404 錯誤後，跳過目前集數但不停止整體流程
+  "all_retry": 2, // 主流程結束後，若 error.md 有可補抓錯誤，最多再整體補抓幾輪；0 代表不補抓
+  "skip_existing": true, // 若目標檔案已存在且不是空檔，是否略過不重新下載
+  "verify_downloads": true, // 是否檢查圖片壞檔、缺號、數量與最後檔名編號
+  "dry_run_images": 3, // --dry-run 時每集預覽幾張圖片網址
+  "dry_run_episodes": 3 // --dry-run 且自動偵測集數時，預覽幾集
+}
