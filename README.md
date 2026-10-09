@@ -15,7 +15,7 @@ Title list mode:
   "url_prefix": "https://tupa.zerobywai.com/manhua/",
   "url_suffix": [
     { "name": "", "url": "l1h1u8dn8ad/", "special_episode": ["6.5", "番外"], "probable_episode": [1200] },
-    { "name": "custom-folder", "url": "https://tupa.zerobywai.com/manhua/na5n5va6h/" }
+    { "name": "custom-folder", "url": "https://tupa.zerobywai.com/manhua/na5n5va6h/", "start_episode": 79, "max_episode": 81 }
   ],
   "start_episode": 2,
   "max_episode": null,
@@ -33,7 +33,9 @@ Title list mode:
 {
   "name": "",
   "url": "l1h1u8dn8ad/",
-  "special_episode": ["6.5", "番外"]
+  "special_episode": ["6.5", "番外"],
+  "start_episode": 79,
+  "max_episode": 81
 }
 ```
 
@@ -61,6 +63,8 @@ If `start_number` is `0`, image number `0` is treated as optional during episode
 
 `max_episode` accepts only an integer, `null`, or an empty string. Use `10`, not `"10"`.
 
+Top-level `start_episode` and `max_episode` are the defaults for every title in `url_suffix`. A title can override either setting by putting `start_episode` or `max_episode` inside its own object. If a title has `max_episode: null` or `max_episode: ""`, that title uses automatic episode detection even when the top-level `max_episode` is an integer.
+
 `probable_episode` is an array of common possible episode jump points, such as `[600, 700]`. It is used only when `max_episode` is `null` or `""`. When automatic episode detection reaches `consecutive_missing_episode_limit`, the downloader jumps to the next probable episode greater than the current episode and keeps detecting. If `max_episode` is an integer, both common and title-specific `probable_episode` values are ignored.
 
 When an episode is reached through `probable_episode`, the downloader first checks whether that episode folder already has at least one valid downloaded image. If it does, that jump point is skipped and the downloader moves to the next `probable_episode`. This fast skip only applies to jump-point episodes, not to episodes reached through the normal `1, 2, 3...` flow.
@@ -74,7 +78,7 @@ https://tupa.zerobywai.com/manhua/na5n5va6h/9/001.jpg
 -> download/na5n5va6h/9/001.jpg
 ```
 
-`start_episode` and `max_episode` apply to every title in `url_suffix`.
+`start_episode` and `max_episode` apply to every title in `url_suffix` unless that title has its own override.
 Each episode stops when the downloader sees `consecutive_404_limit` consecutive 404 responses.
 When `max_episode` is `null` or `""`, episodes stop when the downloader sees `consecutive_missing_episode_limit` missing episodes in a row.
 If `probable_episode` still has a later jump point, the downloader uses that jump point before stopping.

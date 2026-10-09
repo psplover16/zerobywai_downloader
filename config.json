@@ -1,12 +1,43 @@
-{
-  "url_prefix": "https://tupa.zerobywai.com/manhua/", // 共同網址前綴；url_suffix[*].url 不是完整網址時，會與這裡組合
+﻿{
+  // "url_prefix": "https://tupa.zerobyw33.com/manhua/", // 共同網址前綴；url_suffix[*].url 不是完整網址時，會與這裡組合 // 舊版(ZERO搬運)規則
+  "url_prefix": "https://next.readmoo.com/ebook/554/321554/318459/1_0/full/OEBPS/", // 讀墨 規則
   "url_suffix": [
-    { "name": "", "url": "", "special_episode": [], "probable_episode": [] },
+    {
+      "name": "包庇學生被", 
+      "url": "images/",
+      "image_prefix": "i-",
+      "static_images": ["cover.jpg"],
+      "no_episode_folder": true, // 固定不動
+    }
+    // { // ZERO搬運規則
+    //   "name": "[真鍋譲治] 幕之內DX [已完結]",
+    //   "url": "muzh1in7eidx",
+    //   "special_episode": [],
+    //   "probable_episode": [],
+    //   "start_episode": 1,
+    //   "max_episode": 3
+    // }
+    // {
+    //   "name": "",
+    //   "url": "",
+    //   "special_episode": [],
+    //   "probable_episode": [],
+    //   "start_episode": null,
+    //   "max_episode": null
+    // },
   ], // 固定填陣列；每筆 name 是作品資料夾名稱；special_episode 可省略/null/空陣列；probable_episode 可省略，會與通用 probable_episode 合併
-  "start_episode": 1, // 每個作品的起始集數
-  "max_episode": null, // 每個作品的最大集數；可填整數、空字串或 null，空字串/null 代表自動偵測；不要寫成 "10"
+  "cookies": {
+    // Readmoo要cookie，搜尋 CloudFront
+    "CloudFront-Key-Pair-Id": "K9N2WUI93WLMV",
+    "CloudFront-Policy": 
+      "eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cCo6Ly9yZWFkZXIucmVhZG1vby5jb20vZWJvb2svNTU0LzMyMTU1NC8zMTg0NTkvMV8wL2Z1bGwvKiIsIkNvbmRpdGlvbiI6eyJEYXRlTGVzc1RoYW4iOnsiQVdTOkVwb2NoVGltZSI6MTc5MTYwODk4M319fV19",
+    "CloudFront-Signature": 
+      "EQc5-RdWJS6X~HTxP5oLasHYy7-my-9l14gowJP1herhfQHjyyuCuTww8pfsG2~S9THHwrJKfQTcz4XHMQ8j7IXpKWIZgmmzP~n7eDTs-iToH3T3fRhOC6xPH~Jh0SlhH2yfUaUmBl5U8Xu4IMhXNlee3BUeLHFgJ9kWB-Bhs5~sBCZL40j3KRxtENtNiSCJV6Gkw6Srz0Gl9f4OMA~WVmAXCAxeiFM5e9yYSp5AaufPWHT90-OriVuSfp0u2LH4gNmIXxfW7GjAAZmyNvD1XYmQ9jASc0x60UC62u5k1RGC2hbyacpieZOL4wOzglXYBE42fruEgk4wbJXbdV4sYA__"
+  },
+  "start_episode": 1, // 每個作品的預設起始集數；url_suffix 單筆可用自己的 start_episode 覆寫
+  "max_episode": null, // 每個作品的預設最大集數；url_suffix 單筆可用自己的 max_episode 覆寫；可填整數、空字串或 null，空字串/null 代表自動偵測；不要寫成 "10"
   "probable_episode": [], // 通用可能集數跳點；只有 max_episode 是空字串/null 時有效；可在 url_suffix 每筆再加專屬 probable_episode
-  "start_number": 0, // 每集圖片起始編號，可填 0；例如 0 會從 000.jpg、0.jpg、00.jpg 開始嘗試
+  "start_number": 1, // 每集圖片起始編號，可填 0；例如 0 會從 000.jpg、0.jpg、00.jpg 開始嘗試
   "zero_padding": 3, // 最大補零位數；URL 先試 001，再試 1、01；本地檔名統一存成 001
   "extension": ["jpg", "png"], // 圖片副檔名，可填字串或陣列；陣列會依序嘗試，例如 jpg 404 才試 png
   "image_workers": 2 // 同一集內最多同時處理幾個圖片編號；只作用於同一集，不會同時下載多部作品或多個集數

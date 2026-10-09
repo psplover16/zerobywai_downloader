@@ -55,8 +55,14 @@ class TraditionalChineseHelpFormatter(argparse.HelpFormatter):
 class SeriesEntry:
     name: str
     url_prefix: str
+    start_episode: int | None
+    max_episode: int | None
+    has_max_episode_override: bool
     special_episodes: tuple[str, ...]
     probable_episodes: tuple[int, ...]
+    image_prefix: str
+    static_images: tuple[str, ...]
+    no_episode_folder: bool
 
 
 @dataclass(frozen=True)
@@ -67,6 +73,9 @@ class DownloadSeries:
     max_episode: int | None
     special_episodes: tuple[str, ...]
     probable_episodes: tuple[int, ...]
+    image_prefix: str
+    static_images: tuple[str, ...]
+    no_episode_folder: bool
 
 
 @dataclass(frozen=True)
@@ -95,6 +104,7 @@ class DownloadConfig:
     adaptive_backoff: bool
     dry_run_images: int
     dry_run_episodes: int
+    cookies: str | None
 
 
 @dataclass(frozen=True)
@@ -193,6 +203,7 @@ def load_config(path: Path, require_series_entries: bool = True) -> DownloadConf
         adaptive_backoff=bool(raw.get("adaptive_backoff", False)),
         dry_run_images=max(1, int(raw.get("dry_run_images", 3))),
         dry_run_episodes=max(1, int(raw.get("dry_run_episodes", 3))),
+        cookies=parse_cookies(raw.get("cookies")),
     )
 
     validate_config(config, require_series_entries=require_series_entries)
@@ -333,6 +344,15 @@ def parse_extensions(value: Any) -> tuple[str, ...]:
         raise ValueError("extension 至少要有一個副檔名。")
     return tuple(extensions)
 
+def parse_cookies(value: Any) -> str | None:
+    if not value:
+        return None
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, dict):
+        # 自動將 JSON 物件轉換為 HTTP Cookie 標頭所需的 "key=value; key2=value2" 格式
+        return "; ".join(f"{str(k).strip()}={str(v).strip()}" for k, v in value.items())
+    raise ValueError("cookies 必須是字串或物件 (dict)。")
 
 def is_valid_http_url(value: str) -> bool:
     parsed = urllib.parse.urlparse(value)
@@ -378,10 +398,24 @@ def parse_series_entries(value: Any, url_prefix: str) -> tuple[SeriesEntry, ...]
             raw_entry.get("special_episode"),
             f"url_suffix 第 {index} 筆 special_episode",
         )
+        start_episode = parse_optional_int(
+            raw_entry.get("start_episode"),
+            f"url_suffix 第 {index} 筆 start_episode",
+        )
+        has_max_episode_override = "max_episode" in raw_entry
+        max_episode = parse_optional_int(
+            raw_entry.get("max_episode"),
+            f"url_suffix 第 {index} 筆 max_episode",
+        )
         probable_episodes = parse_int_list(
             raw_entry.get("probable_episode", []),
             f"url_suffix 第 {index} 筆 probable_episode",
         )
+        image_prefix = str(raw_entry.get("image_prefix", "")).strip()
+        static_images_raw = raw_entry.get("static_images", [])
+        static_images = tuple(str(x).strip() for x in static_images_raw if str(x).strip())
+        no_episode_folder = bool(raw_entry.get("no_episode_folder", False))
+
 
         if name in seen_names:
             raise ValueError(f"url_suffix 的作品資料夾名稱重複：{name}")
@@ -390,8 +424,14 @@ def parse_series_entries(value: Any, url_prefix: str) -> tuple[SeriesEntry, ...]
             SeriesEntry(
                 name=name,
                 url_prefix=resolved_url,
+                start_episode=start_episode,
+                max_episode=max_episode,
+                has_max_episode_override=has_max_episode_override,
                 special_episodes=special_episodes,
                 probable_episodes=probable_episodes,
+                image_prefix=image_prefix,
+                static_images=static_images,
+                no_episode_folder=no_episode_folder,
             )
         )
         seen_names.add(name)
@@ -683,12 +723,19 @@ def validate_config(config: DownloadConfig, require_series_entries: bool = True)
     for entry in config.series_entries:
         if not is_valid_http_url(entry.url_prefix):
             raise ValueError("解析後的網址必須是 http:// 或 https:// 開頭的正確網址。")
+        if entry.start_episode is not None and entry.start_episode < 1:
+            raise ValueError(f"url_suffix 作品 {entry.name} 的 start_episode 必須大於等於 1。")
         if any(episode < 1 for episode in entry.probable_episodes):
             raise ValueError(f"url_suffix 作品 {entry.name} 的 probable_episode 每個集數都必須大於等於 1。")
     if config.start_episode < 1:
         raise ValueError("start_episode 必須大於等於 1。")
     if config.max_episode is not None and config.max_episode < config.start_episode:
         raise ValueError("max_episode 必須大於等於 start_episode。")
+    for entry in config.series_entries:
+        start_episode = entry.start_episode if entry.start_episode is not None else config.start_episode
+        max_episode = entry.max_episode if entry.has_max_episode_override else config.max_episode
+        if max_episode is not None and max_episode < start_episode:
+            raise ValueError(f"url_suffix 作品 {entry.name} 的 max_episode 必須大於等於 start_episode。")
     if any(episode < 1 for episode in config.probable_episodes):
         raise ValueError("probable_episode 的每個集數都必須大於等於 1。")
     if config.start_number < 0:
@@ -830,10 +877,13 @@ def build_series_list(config: DownloadConfig) -> list[DownloadSeries]:
         DownloadSeries(
             name=entry.name,
             url_prefix=entry.url_prefix,
-            start_episode=config.start_episode,
-            max_episode=config.max_episode,
+            start_episode=entry.start_episode if entry.start_episode is not None else config.start_episode,
+            max_episode=entry.max_episode if entry.has_max_episode_override else config.max_episode,
             special_episodes=entry.special_episodes,
             probable_episodes=merge_int_tuples(config.probable_episodes, entry.probable_episodes),
+            image_prefix=entry.image_prefix,
+            static_images=entry.static_images,
+            no_episode_folder=entry.no_episode_folder,
         )
         for entry in config.series_entries
     ]
@@ -879,20 +929,32 @@ def build_item(
     if not prefix.endswith("/"):
         prefix += "/"
 
+    img_prefix = series.image_prefix
+
     target_stem = f"{number:0{config.zero_padding}d}"
-    target_filename = f"{target_stem}.{extension}"
-    source_filename = f"{source_stem if source_stem is not None else target_stem}.{extension}"
+    target_filename = f"{img_prefix}{target_stem}.{extension}"
+    
+    if source_stem is not None:
+        source_filename = f"{img_prefix}{source_stem}.{extension}"
+    else:
+        source_filename = f"{img_prefix}{target_stem}.{extension}"
+
     episode_name = str(episode)
+    
+    if series.no_episode_folder:
+        url = f"{prefix}{source_filename}"
+    else:
+        url = f"{prefix}{episode_name}/{source_filename}"
+
     return DownloadItem(
         series=series,
         episode=episode,
         number=number,
         extension=extension,
         source_name=source_filename,
-        url=f"{prefix}{episode_name}/{source_filename}",
+        url=url,
         target=series_root(config, series) / episode_name / target_filename,
     )
-
 
 def candidate_number_stems(number: int, zero_padding: int) -> tuple[str, ...]:
     raw_stem = str(number)
@@ -997,13 +1059,18 @@ def validation_notice_type(reason: str) -> str:
     return ""
 
 
-def request_headers() -> dict[str, str]:
-    return {
+def request_headers(config: DownloadConfig | None = None) -> dict[str, str]:
+    headers = {
         "User-Agent": (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
             "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36"
         )
     }
+    # 如果有設定 cookies，就加進 Header 中
+    if config is not None and config.cookies:
+        headers["Cookie"] = config.cookies
+        
+    return headers
 
 
 def error_details(exc: Exception) -> tuple[str, str]:
@@ -1027,7 +1094,7 @@ def download_url_to_path(
 
     for attempt in range(1, config.retries + 1):
         try:
-            request = urllib.request.Request(url, headers=request_headers())
+            request = urllib.request.Request(url, headers=request_headers(config))
             throttler.wait_before_request()
             with urllib.request.urlopen(request, timeout=config.timeout_seconds) as response:
                 status = getattr(response, "status", 200)
@@ -1206,14 +1273,23 @@ def check_episode(
 
     extensions = set(config.extensions)
     numbered_files: dict[int, list[Path]] = {}
+    
+    img_prefix = series.image_prefix
+
     for path in episode_dir.iterdir():
         if not path.is_file():
             continue
         if path.suffix.lower().lstrip(".") not in extensions:
             continue
-        if not path.stem.isdigit():
+            
+        stem = path.stem
+        if img_prefix and stem.startswith(img_prefix):
+            stem = stem[len(img_prefix):]
+            
+        if not stem.isdigit():
             continue
-        numbered_files.setdefault(int(path.stem), []).append(path)
+        numbered_files.setdefault(int(stem), []).append(path)
+
 
     highest_number = max(numbered_files) if numbered_files else config.start_number - 1
     if expected_last_number is None:
@@ -1398,6 +1474,42 @@ def download_episode(
     skipped = 0
     not_found = 0
     errors = 0
+    
+    for static_name in series.static_images:
+        prefix = series.url_prefix
+        if not prefix.endswith("/"):
+            prefix += "/"
+        episode_name = str(episode)
+        
+        if series.no_episode_folder:
+            url = f"{prefix}{static_name}"
+        else:
+            url = f"{prefix}{episode_name}/{static_name}"
+            
+        target = series_root(config, series) / episode_name / static_name
+        
+        item = DownloadItem(
+            series=series,
+            episode=episode,
+            number=0, 
+            extension=static_name.split('.')[-1] if '.' in static_name else 'jpg',
+            source_name=static_name,
+            url=url,
+            target=target,
+        )
+        
+        res = download_item(item, config, throttler)
+        print(res.message)
+        if res.status == "ok":
+            downloaded += 1
+        elif res.status == "skip":
+            skipped += 1
+        elif res.status == "not_found":
+            not_found += 1
+        else:
+            errors += 1
+
+
     last_found = config.start_number - 1
     next_number = config.start_number
     expected_number = config.start_number
